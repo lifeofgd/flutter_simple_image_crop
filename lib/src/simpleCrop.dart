@@ -16,27 +16,26 @@ enum ChipShape {
 class ImgCrop extends StatefulWidget {
   final ImageProvider image;
   final double maximumScale;
-  final ImageErrorListener onImageError;
+  final ImageErrorListener? onImageError;
   final double chipRadius;
   final double chipRatio;
   final ChipShape chipShape;
   final double handleSize;
-  const ImgCrop(
-      {Key key,
-      this.image,
-      this.maximumScale: 2.0,
-      this.onImageError,
-      this.chipRadius = 150,
-      this.chipRatio = 1.0,
-      this.chipShape = ChipShape.circle,
-      this.handleSize = 10.0})
-      : assert(image != null),
-        assert(maximumScale != null),
-        assert(handleSize != null && handleSize >= 0.0),
+
+  const ImgCrop({
+    Key? key,
+    required this.image,
+    this.maximumScale: 2.0,
+    this.onImageError,
+    this.chipRadius = 150,
+    this.chipRatio = 1.0,
+    this.chipShape = ChipShape.circle,
+    this.handleSize = 10.0,
+  })  : assert(handleSize >= 0.0),
         super(key: key);
 
   ImgCrop.file(File file,
-      {Key key,
+      {Key? key,
       double scale = 1.0,
       this.maximumScale: 2.0,
       this.onImageError,
@@ -45,13 +44,12 @@ class ImgCrop extends StatefulWidget {
       this.chipShape = ChipShape.circle,
       this.handleSize = 10.0})
       : image = FileImage(file, scale: scale),
-        assert(maximumScale != null),
         super(key: key);
 
   ImgCrop.asset(String assetName,
-      {Key key,
-      AssetBundle bundle,
-      String package,
+      {Key? key,
+      AssetBundle? bundle,
+      String? package,
       this.chipRadius = 150,
       this.maximumScale: 2.0,
       this.onImageError,
@@ -59,38 +57,37 @@ class ImgCrop extends StatefulWidget {
       this.chipShape = ChipShape.circle,
       this.handleSize = 10.0})
       : image = AssetImage(assetName, bundle: bundle, package: package),
-        assert(maximumScale != null),
         super(key: key);
 
   @override
   State<StatefulWidget> createState() => ImgCropState();
 
-  static ImgCropState of(BuildContext context) {
+  static ImgCropState? of(BuildContext context) {
     return context.findAncestorStateOfType();
   }
 }
 
 class ImgCropState extends State<ImgCrop> with TickerProviderStateMixin, Drag {
   final _surfaceKey = GlobalKey();
-  AnimationController _activeController;
-  AnimationController _settleController;
-  ImageStream _imageStream;
-  ui.Image _image;
-  double _scale;
-  double _ratio;
-  Rect _view;
-  Rect _area;
-  Offset _lastFocalPoint;
-  _CropAction _action;
-  double _startScale;
-  Rect _startView;
-  Tween<Rect> _viewTween;
-  Tween<double> _scaleTween;
-  ImageStreamListener _imageListener;
+  late AnimationController _activeController;
+  late AnimationController _settleController;
+  ImageStream? _imageStream;
+  ui.Image? _image;
+  late double _scale;
+  double? _ratio;
+  late Rect _view;
+  late Rect _area;
+  late Offset _lastFocalPoint;
+  _CropAction? _action;
+  double? _startScale;
+  Rect? _startView;
+  late Tween<Rect?> _viewTween;
+  late Tween<double> _scaleTween;
+  late ImageStreamListener _imageListener;
 
   double get scale => _area.shortestSide / _scale;
 
-  Rect get area {
+  Rect? get area {
     return _view.isEmpty
         ? null
         : Rect.fromLTWH(
@@ -116,8 +113,7 @@ class ImgCropState extends State<ImgCrop> with TickerProviderStateMixin, Drag {
       vsync: this,
       value: 0.0,
     )..addListener(() => setState(() {})); // 裁剪背景灰度控制
-    _settleController = AnimationController(vsync: this)
-      ..addListener(_settleAnimationChanged);
+    _settleController = AnimationController(vsync: this)..addListener(_settleAnimationChanged);
   }
 
   @override
@@ -143,7 +139,7 @@ class ImgCropState extends State<ImgCrop> with TickerProviderStateMixin, Drag {
     _activate(1.0);
   }
 
-  Future<File> cropCompleted(File file, {int preferredSize}) async {
+  Future<File> cropCompleted(File file, {required int preferredSize}) async {
     // final options = await ImageCrop.getImageOptions(file: file);
     // debugPrint(
     //     'image width: ${options.width}, height: ${options.height}  $scale');
@@ -155,7 +151,7 @@ class ImgCropState extends State<ImgCrop> with TickerProviderStateMixin, Drag {
 
     final croppedFile = await ImageCrop.cropImage(
       file: sampleFile,
-      area: area,
+      area: area!,
     );
 
     return croppedFile;
@@ -164,11 +160,10 @@ class ImgCropState extends State<ImgCrop> with TickerProviderStateMixin, Drag {
   void _getImage({bool force: false}) {
     final oldImageStream = _imageStream;
     _imageStream = widget.image.resolve(createLocalImageConfiguration(context));
-    if (_imageStream.key != oldImageStream?.key || force) {
+    if (_imageStream!.key != oldImageStream?.key || force) {
       oldImageStream?.removeListener(_imageListener);
-      _imageListener =
-          ImageStreamListener(_updateImage, onError: widget.onImageError);
-      _imageStream.addListener(_imageListener);
+      _imageListener = ImageStreamListener(_updateImage, onError: widget.onImageError);
+      _imageStream!.addListener(_imageListener);
     }
   }
 
@@ -208,62 +203,55 @@ class ImgCropState extends State<ImgCrop> with TickerProviderStateMixin, Drag {
 
   // NOTE: 区域性缩小 总区域 - 10 * 10 区域
   Size get _boundaries {
-    return _surfaceKey.currentContext.size -
-        Offset(widget.handleSize, widget.handleSize);
+    return _surfaceKey.currentContext!.size! - Offset(widget.handleSize, widget.handleSize) as ui.Size;
   }
 
   void _settleAnimationChanged() {
     setState(() {
-      _scale = _scaleTween.transform(_settleController
-          .value); // 将0 ～ 1的动画转变过程，转换至 _scaleTween 的begin ~ end
-      _view = _viewTween.transform(_settleController.value);
+      _scale = _scaleTween.transform(_settleController.value); // 将0 ～ 1的动画转变过程，转换至 _scaleTween 的begin ~ end
+      _view = _viewTween.transform(_settleController.value)!;
     });
   }
 
   Rect _calculateDefaultArea({
-    int imageWidth,
-    int imageHeight,
-    double viewWidth,
-    double viewHeight,
+    int? imageWidth,
+    int? imageHeight,
+    double? viewWidth,
+    double? viewHeight,
   }) {
     if (imageWidth == null || imageHeight == null) {
       return Rect.zero;
     }
 
-    final _deviceWidth =
-        MediaQuery.of(context).size.width - (2 * widget.handleSize);
+    final _deviceWidth = MediaQuery.of(context).size.width - (2 * widget.handleSize);
     final _areaOffset = (_deviceWidth - (widget.chipRadius * 2));
     final _areaOffsetRadio = _areaOffset / _deviceWidth;
     final width = 1.0 - _areaOffsetRadio;
-    final height = (imageWidth * viewWidth * width) /
-        (imageHeight *
-            viewHeight *
-            (widget.chipShape == ChipShape.rect ? widget.chipRatio : 1.0));
+    final height = (imageWidth * viewWidth! * width) / (imageHeight * viewHeight! * (widget.chipShape == ChipShape.rect ? widget.chipRatio : 1.0));
 
     return Rect.fromLTWH((1.0 - width) / 2, (1.0 - height) / 2, width, height);
   }
 
   void _updateImage(ImageInfo imageInfo, bool synchronousCall) {
-    WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
+    WidgetsBinding.instance!.addPostFrameCallback((timeStamp) {
       setState(() {
         _image = imageInfo.image;
         _scale = imageInfo.scale;
 
-        // NOTE: conver img  _ratio value >= 0
+        // NOTE: convert img  _ratio value >= 0
         _ratio = max(
-          _boundaries.width / _image.width,
-          _boundaries.height / _image.height,
+          _boundaries.width / _image!.width,
+          _boundaries.height / _image!.height,
         );
 
         // NOTE: 计算图片显示比值，最大1.0为全部显示
-        final viewWidth = _boundaries.width / (_image.width * _scale * _ratio);
-        final viewHeight =
-            _boundaries.height / (_image.height * _scale * _ratio);
+        final viewWidth = _boundaries.width / (_image!.width * _scale * _ratio!);
+        final viewHeight = _boundaries.height / (_image!.height * _scale * _ratio!);
         _area = _calculateDefaultArea(
           viewWidth: viewWidth,
           viewHeight: viewHeight,
-          imageWidth: _image.width,
-          imageHeight: _image.height,
+          imageWidth: _image!.width,
+          imageHeight: _image!.height,
         );
 
         // NOTE: 相对于整体图片已显示的view大小， viewWidth - 1.0 为未显示区域， / 2 算出 left的比例模型
@@ -275,7 +263,7 @@ class ImgCropState extends State<ImgCrop> with TickerProviderStateMixin, Drag {
         );
       });
     });
-    WidgetsBinding.instance.ensureVisualUpdate();
+    WidgetsBinding.instance!.ensureVisualUpdate();
   }
 
   void _handleScaleStart(ScaleStartDetails details) {
@@ -310,25 +298,24 @@ class ImgCropState extends State<ImgCrop> with TickerProviderStateMixin, Drag {
   double get _maximumScale => widget.maximumScale;
 
   double get _minimumScale {
-    final scaleX = _boundaries.width * _area.width / (_image.width * _ratio);
-    final scaleY = _boundaries.height * _area.height / (_image.height * _ratio);
+    final scaleX = _boundaries.width * _area.width / (_image!.width * _ratio!);
+    final scaleY = _boundaries.height * _area.height / (_image!.height * _ratio!);
     return min(_maximumScale, max(scaleX, scaleY));
   }
 
   void _handleScaleEnd(ScaleEndDetails details) {
     _activate(0);
 
-    final targetScale =
-        _scale.clamp(_minimumScale, _maximumScale); //NOTE: 处理缩放边界值
+    final num targetScale = _scale.clamp(_minimumScale, _maximumScale); //NOTE: 处理缩放边界值
     _scaleTween = Tween<double>(
       begin: _scale,
-      end: targetScale,
+      end: targetScale as double?,
     );
 
     _startView = _view;
     _viewTween = RectTween(
       begin: _view,
-      end: _getViewInBoundaries(targetScale),
+      end: _getViewInBoundaries(targetScale as double),
     );
 
     _settleController.value = 0.0;
@@ -341,9 +328,7 @@ class ImgCropState extends State<ImgCrop> with TickerProviderStateMixin, Drag {
 
   // 手势触发过程 判断action 类型:移动或者缩放, 跟新view 重绘image
   void _handleScaleUpdate(ScaleUpdateDetails details) {
-    _action = details.rotation == 0.0 && details.scale == 1.0
-        ? _CropAction.moving
-        : _CropAction.scaling;
+    _action = details.rotation == 0.0 && details.scale == 1.0 ? _CropAction.moving : _CropAction.scaling;
 
     if (_action == _CropAction.moving) {
       final delta = details.focalPoint - _lastFocalPoint; // offset相减 得出一次相对移动距离
@@ -352,27 +337,23 @@ class ImgCropState extends State<ImgCrop> with TickerProviderStateMixin, Drag {
       setState(() {
         // move只做两维方向移动
         _view = _view.translate(
-          delta.dx / (_image.width * _scale * _ratio),
-          delta.dy / (_image.height * _scale * _ratio),
+          delta.dx / (_image!.width * _scale * _ratio!),
+          delta.dy / (_image!.height * _scale * _ratio!),
         );
       });
     } else if (_action == _CropAction.scaling) {
       setState(() {
-        _scale = _startScale * details.scale;
+        _scale = _startScale! * details.scale;
 
         // 计算已缩放的比值；
-        final dx = _boundaries.width *
-            (1.0 - details.scale) /
-            (_image.width * _scale * _ratio);
-        final dy = _boundaries.height *
-            (1.0 - details.scale) /
-            (_image.height * _scale * _ratio);
+        final dx = _boundaries.width * (1.0 - details.scale) / (_image!.width * _scale * _ratio!);
+        final dy = _boundaries.height * (1.0 - details.scale) / (_image!.height * _scale * _ratio!);
 
         _view = Rect.fromLTWH(
-          _startView.left + dx / 2,
-          _startView.top + dy / 2,
-          _startView.width,
-          _startView.height,
+          _startView!.left + dx / 2,
+          _startView!.top + dy / 2,
+          _startView!.width,
+          _startView!.height,
         );
       });
     }
@@ -380,24 +361,16 @@ class ImgCropState extends State<ImgCrop> with TickerProviderStateMixin, Drag {
 }
 
 class _CropPainter extends CustomPainter {
-  final ui.Image image;
-  final Rect view;
-  final double ratio;
+  final ui.Image? image;
+  final Rect? view;
+  final double? ratio;
   final Rect area;
-  final double scale;
-  final double active;
-  final ChipShape chipShape;
+  final double? scale;
+  final double? active;
+  final ChipShape? chipShape;
   final double handleSize;
 
-  _CropPainter(
-      {this.image,
-      this.view,
-      this.ratio,
-      this.area,
-      this.scale,
-      this.active,
-      this.chipShape,
-      this.handleSize});
+  _CropPainter({this.image, this.view, this.ratio, required this.area, this.scale, this.active, this.chipShape, required this.handleSize});
 
   @override
   bool shouldRepaint(_CropPainter oldDelegate) {
@@ -409,7 +382,7 @@ class _CropPainter extends CustomPainter {
         oldDelegate.scale != scale;
   }
 
-  currentRact(size) {
+  currentRect(Size size) {
     return Rect.fromLTWH(
       handleSize / 2,
       handleSize / 2,
@@ -419,7 +392,7 @@ class _CropPainter extends CustomPainter {
   }
 
   Rect currentBoundaries(size) {
-    var rect = currentRact(size);
+    var rect = currentRect(size);
     return Rect.fromLTWH(
       rect.width * area.left,
       rect.height * area.top,
@@ -430,7 +403,7 @@ class _CropPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final rect = currentRact(size);
+    final rect = currentRect(size);
 
     canvas.save();
     canvas.translate(rect.left, rect.top);
@@ -441,45 +414,32 @@ class _CropPainter extends CustomPainter {
       final src = Rect.fromLTWH(
         0.0,
         0.0,
-        image.width.toDouble(),
-        image.height.toDouble(),
+        image!.width.toDouble(),
+        image!.height.toDouble(),
       );
       final dst = Rect.fromLTWH(
-        view.left * image.width * scale * ratio,
-        view.top * image.height * scale * ratio,
-        image.width * scale * ratio,
-        image.height * scale * ratio,
+        view!.left * image!.width * scale! * ratio!,
+        view!.top * image!.height * scale! * ratio!,
+        image!.width * scale! * ratio!,
+        image!.height * scale! * ratio!,
       );
 
       canvas.save();
       canvas.clipRect(Rect.fromLTWH(0.0, 0.0, rect.width, rect.height));
-      canvas.drawImageRect(image, src, dst, paint);
+      canvas.drawImageRect(image!, src, dst, paint);
       canvas.restore();
     }
 
-    paint.color = Color.fromRGBO(
-        0x0,
-        0x0,
-        0x0,
-        _kCropOverlayActiveOpacity * active +
-            _kCropOverlayInactiveOpacity * (1.0 - active));
+    paint.color = Color.fromRGBO(0x0, 0x0, 0x0, _kCropOverlayActiveOpacity * active! + _kCropOverlayInactiveOpacity * (1.0 - active!));
     final boundaries = currentBoundaries(size);
-    final _path1 = Path()
-      ..addRect(Rect.fromLTRB(0.0, 0.0, rect.width, rect.height));
+    final _path1 = Path()..addRect(Rect.fromLTRB(0.0, 0.0, rect.width, rect.height));
     Path _path2;
     if (chipShape == ChipShape.rect) {
       _path2 = Path()..addRect(boundaries);
     } else {
-      _path2 = Path()
-        ..addRRect(RRect.fromLTRBR(
-            boundaries.left,
-            boundaries.top,
-            boundaries.right,
-            boundaries.bottom,
-            Radius.circular(boundaries.height / 2)));
+      _path2 = Path()..addRRect(RRect.fromLTRBR(boundaries.left, boundaries.top, boundaries.right, boundaries.bottom, Radius.circular(boundaries.height / 2)));
     }
-    canvas.clipPath(Path.combine(
-        PathOperation.difference, _path1, _path2)); //MARK: 合并路径，选择交叉选区
+    canvas.clipPath(Path.combine(PathOperation.difference, _path1, _path2)); //MARK: 合并路径，选择交叉选区
     canvas.drawRect(Rect.fromLTRB(0.0, 0.0, rect.width, rect.height), paint);
     paint
       ..isAntiAlias = true
@@ -487,19 +447,10 @@ class _CropPainter extends CustomPainter {
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
     if (chipShape == ChipShape.rect) {
-      canvas.drawRect(
-          Rect.fromLTRB(boundaries.left - 1, boundaries.top - 1,
-              boundaries.right + 1, boundaries.bottom + 1),
-          paint);
+      canvas.drawRect(Rect.fromLTRB(boundaries.left - 1, boundaries.top - 1, boundaries.right + 1, boundaries.bottom + 1), paint);
     } else {
       canvas.drawRRect(
-          RRect.fromLTRBR(
-              boundaries.left - 1,
-              boundaries.top - 1,
-              boundaries.right + 1,
-              boundaries.bottom + 1,
-              Radius.circular(boundaries.height / 2)),
-          paint);
+          RRect.fromLTRBR(boundaries.left - 1, boundaries.top - 1, boundaries.right + 1, boundaries.bottom + 1, Radius.circular(boundaries.height / 2)), paint);
     }
 
     canvas.restore();
